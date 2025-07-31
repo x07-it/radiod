@@ -3,27 +3,39 @@ package server
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"github.com/yosssi/gohtml"
 	"x07-it/radiod/internal/stream"
 )
 
 // SetupRouter creates and configures Gin router with all endpoints.
 func SetupRouter(p *stream.Player) *gin.Engine {
+	// Загружаем шаблон главной страницы. В случае ошибки используем запасной HTML.
+	tmplBytes, err := os.ReadFile("web/index.gohtml")
+	var indexTemplate string
+	if err != nil {
+		logrus.WithError(err).Warn("fallback to built-in index template")
+		indexTemplate = "<html><body><h1>Stations</h1><ul>{{STATIONS}}</ul></body></html>"
+	} else {
+		indexTemplate = string(tmplBytes)
+	}
+
 	r := gin.Default()
 
 	// Index page with list of stations.
 	r.GET("/", func(c *gin.Context) {
 		stations := p.StationNames()
 		var b strings.Builder
-		b.WriteString("<html><body><h1>Stations</h1><ul>")
 		for _, s := range stations {
 			b.WriteString(fmt.Sprintf("<li><a href=\"/stream/%s\">%s</a></li>", s, s))
 		}
-		b.WriteString("</ul></body></html>")
-		html := gohtml.Format(b.String())
+		// Вставляем список станций в шаблон.
+		page := strings.Replace(indexTemplate, "{{STATIONS}}", b.String(), 1)
+		html := gohtml.Format(page)
 		c.Data(200, "text/html; charset=utf-8", []byte(html))
 	})
 
