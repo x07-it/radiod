@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort" // сортировка для стабильного вывода имён станций
+	"sort"
 	"sync"
 	"time"
 

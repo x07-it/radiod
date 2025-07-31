@@ -24,7 +24,7 @@ func Load() (Config, error) {
 	v.AddConfigPath(".")
 
 	// Default values allow server to run out of the box.
-	v.SetDefault("ffmpeg_path", "/usr/bin/ffmpeg")
+	v.SetDefault("ffmpeg_path", "ffmpeg")
 	v.SetDefault("output_format", "mp3")
 	v.SetDefault("output_bitrate", "96k")
 	v.SetDefault("music_dir", "./music")

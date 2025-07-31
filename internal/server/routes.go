@@ -11,6 +11,8 @@ import (
 	"x07-it/radiod/internal/stream"
 )
 
+var indexTemplate []byte
+
 // SetupRouter creates and configures Gin router with all endpoints.
 func SetupRouter(p *stream.Player) *gin.Engine {
 	// Шаблон главной страницы хранится в бинарнике.
