@@ -100,6 +100,12 @@ func (s *Station) Stop() {
 // loop continuously plays tracks and broadcasts to listeners.
 func (s *Station) loop() {
 	for {
+		// Если треков нет, подождать и продолжить цикл, чтобы избежать пустого CPU-цикла
+		if len(s.tracks) == 0 {
+			logrus.WithField("station", s.name).Warn("no tracks available")
+			time.Sleep(time.Second)
+			continue
+		}
 		for _, track := range s.tracks {
 			select {
 			case <-s.stop:
