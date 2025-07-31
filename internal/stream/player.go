@@ -20,6 +20,7 @@ type Station struct {
 	listeners map[chan []byte]struct{}
 	mu        sync.Mutex
 	buffer    time.Duration
+	bps       int // bytes per second for throttling
 }
 
 // Player manages multiple stations.
@@ -35,7 +36,13 @@ func NewPlayer(cfg config.Config) *Player {
 
 // AddStation registers new station and starts playback goroutine.
 func (p *Player) AddStation(name string, tracks []string) {
-	st := &Station{name: name, tracks: tracks, listeners: make(map[chan []byte]struct{}), buffer: time.Duration(p.cfg.BufferSeconds) * time.Second}
+	st := &Station{
+		name:      name,
+		tracks:    tracks,
+		listeners: make(map[chan []byte]struct{}),
+		buffer:    time.Duration(p.cfg.BufferSeconds) * time.Second,
+		bps:       parseBitrate(p.cfg.OutputBitrate),
+	}
 	p.stations[name] = st
 	go st.loop()
 }
@@ -83,17 +90,26 @@ func (s *Station) loop() {
 			s.current = filepath.Base(track)
 			s.mu.Unlock()
 
+			logrus.WithField("station", s.name).WithField("track", track).Info("playing track")
 			f, err := os.Open(track)
 			if err != nil {
 				logrus.WithError(err).Error("open track")
 				continue
 			}
-			reader := bufio.NewReader(f)
+			bufSize := s.bps * int(s.buffer.Seconds())
+			if bufSize <= 0 {
+				bufSize = 32 * 1024
+			}
+			reader := bufio.NewReaderSize(f, bufSize)
 			buf := make([]byte, 32*1024)
 			for {
 				n, err := reader.Read(buf)
 				if n > 0 {
 					s.broadcast(buf[:n])
+					sleep := time.Duration(int64(time.Second) * int64(n) / int64(s.bps))
+					if sleep > 0 {
+						time.Sleep(sleep)
+					}
 				}
 				if err == io.EOF {
 					break
@@ -102,8 +118,6 @@ func (s *Station) loop() {
 					logrus.WithError(err).Error("read track")
 					break
 				}
-				// Small sleep to avoid tight loop; not precise but enough
-				time.Sleep(50 * time.Millisecond)
 			}
 			f.Close()
 		}
