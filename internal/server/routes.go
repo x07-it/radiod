@@ -64,7 +64,24 @@ func SetupRouter(p *stream.Player) *gin.Engine {
 			return
 		}
 		ch, remove := st.AddListener()
-		defer remove()
+
+		// Логируем подключение слушателя для аудита и отладки.
+		remoteIP := c.ClientIP()
+		stationName := c.Param("station")
+		logrus.WithFields(logrus.Fields{
+			"remote":  remoteIP,
+			"station": stationName,
+		}).Info("listener connected")
+
+		defer func() {
+			remove()
+			// При отключении фиксируем событие с теми же данными.
+			logrus.WithFields(logrus.Fields{
+				"remote":  remoteIP,
+				"station": stationName,
+			}).Info("listener disconnected")
+		}()
+
 		c.Header("Content-Type", "audio/mpeg")
 		c.Status(200)
 		c.Stream(func(w io.Writer) bool {
