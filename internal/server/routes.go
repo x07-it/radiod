@@ -1,7 +1,7 @@
 package server
 
 import (
-	"fmt"
+	"html/template"
 	"io"
 	"os"
 	"strings"
@@ -26,12 +26,18 @@ func SetupRouter(p *stream.Player) *gin.Engine {
 
 	r := gin.Default()
 
+	// Шаблон ссылки на станцию: `<li><a href="/stream/{{.}}">{{.}}</a></li>`.
+	linkTmpl := template.Must(template.New("stationLink").Parse(`<li><a href="/stream/{{.}}">{{.}}</a></li>`))
+
 	// Index page with list of stations.
 	r.GET("/", func(c *gin.Context) {
 		stations := p.StationNames()
 		var b strings.Builder
 		for _, s := range stations {
-			b.WriteString(fmt.Sprintf("<li><a href=\"/stream/%s\">%s</a></li>", s, s))
+			// Рендерим безопасную ссылку на станцию.
+			if err := linkTmpl.Execute(&b, s); err != nil {
+				logrus.WithError(err).Error("cannot render station link")
+			}
 		}
 		// Вставляем список станций в шаблон.
 		page := strings.Replace(indexTemplate, "{{STATIONS}}", b.String(), 1)
