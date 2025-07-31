@@ -21,6 +21,8 @@ type Station struct {
 	mu        sync.Mutex
 	buffer    time.Duration
 	bps       int // bytes per second for throttling
+	stop      chan struct{}
+	stopOnce  sync.Once
 }
 
 // Player manages multiple stations.
@@ -42,6 +44,7 @@ func (p *Player) AddStation(name string, tracks []string) {
 		listeners: make(map[chan []byte]struct{}),
 		buffer:    time.Duration(p.cfg.BufferSeconds) * time.Second,
 		bps:       parseBitrate(p.cfg.OutputBitrate),
+		stop:      make(chan struct{}),
 	}
 	p.stations[name] = st
 	go st.loop()
@@ -58,6 +61,13 @@ func (p *Player) StationNames() []string {
 
 // Get returns station by name.
 func (p *Player) Get(name string) *Station { return p.stations[name] }
+
+// Stop stops playback for all stations.
+func (p *Player) Stop() {
+	for _, st := range p.stations {
+		st.Stop()
+	}
+}
 
 // NowPlaying returns current track name for station.
 func (s *Station) NowPlaying() string {
@@ -82,10 +92,22 @@ func (s *Station) AddListener() (chan []byte, func()) {
 	return ch, remove
 }
 
+// Stop signals station loop to exit.
+func (s *Station) Stop() {
+	s.stopOnce.Do(func() { close(s.stop) })
+}
+
 // loop continuously plays tracks and broadcasts to listeners.
 func (s *Station) loop() {
 	for {
 		for _, track := range s.tracks {
+			select {
+			case <-s.stop:
+				logrus.WithField("station", s.name).Info("station stopped")
+				return
+			default:
+			}
+
 			s.mu.Lock()
 			s.current = filepath.Base(track)
 			s.mu.Unlock()
@@ -103,6 +125,13 @@ func (s *Station) loop() {
 			reader := bufio.NewReaderSize(f, bufSize)
 			buf := make([]byte, 32*1024)
 			for {
+				select {
+				case <-s.stop:
+					f.Close()
+					logrus.WithField("station", s.name).Info("station stopped")
+					return
+				default:
+				}
 				n, err := reader.Read(buf)
 				if n > 0 {
 					s.broadcast(buf[:n])
