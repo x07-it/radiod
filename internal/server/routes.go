@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"io"
 	"strings"
+	"x07-it/radiod/web"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -18,14 +19,15 @@ func SetupRouter(p *stream.Player) *gin.Engine {
 	// Шаблон главной страницы хранится в бинарнике.
 	indexHTML := string(indexTemplate)
 	if len(indexHTML) == 0 {
-		logrus.Warn("fallback to built-in index template")
-		indexHTML = "<html><body><h1>Stations</h1><ul>{{STATIONS}}</ul></body></html>"
+		page, _ := web.IndexPage()
+		logrus.Warn("loading big index template")
+		indexHTML = page
 	}
 
 	r := gin.Default()
 
 	// Шаблон ссылки на станцию: `<li><a href="/stream/{{.}}">{{.}}</a></li>`.
-	linkTmpl := template.Must(template.New("stationLink").Parse(`<li><a href="/stream/{{.}}">{{.}}</a></li>`))
+	linkTmpl := template.Must(template.New("stationLink").Parse(`<a href="/stream/{{.}}">{{.}}</a><br />`))
 
 	// Index page with list of stations.
 	r.GET("/", func(c *gin.Context) {

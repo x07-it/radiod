@@ -1,11 +1,12 @@
 package main
 
 import (
-	"os/exec"
 	"context"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -46,6 +47,14 @@ func main() {
 	r := server.SetupRouter(player)
 	srv := &http.Server{Addr: cfg.Listen, Handler: r}
 
+	go func() {
+		for i := 5; i > 0; i-- {
+			//fmt. Printf("Осталось %d секунд...\n", i)
+			time.Sleep(1 * time.Second)
+		}
+		openBrowser("http://localhost:7000")
+	}()
+
 	// Run server in separate goroutine.
 	go func() {
 		logrus.Infof("Starting server on %s", cfg.Listen)
@@ -69,4 +78,17 @@ func main() {
 	player.Stop()
 
 	logrus.Info("Server exited")
+}
+
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default: // linux, freebsd, etc.
+		cmd = exec.Command("xdg-open", url)
+	}
+	_ = cmd.Start()
 }
