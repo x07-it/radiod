@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort" // сортировка для стабильного вывода имён станций
 	"sync"
 	"time"
 
@@ -56,6 +57,8 @@ func (p *Player) StationNames() []string {
 	for k := range p.stations {
 		res = append(res, k)
 	}
+	// сортируем результат для стабильного вывода
+	sort.Strings(res)
 	return res
 }
 
