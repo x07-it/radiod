@@ -30,7 +30,7 @@ func Load() (Config, error) {
 	v.SetDefault("music_dir", "./music")
 	v.SetDefault("cache_dir", "./.cache")
 	v.SetDefault("buffer_seconds", 7)
-	v.SetDefault("listen", ":8080")
+	v.SetDefault("listen", ":7000")
 
 	v.AutomaticEnv()
 
