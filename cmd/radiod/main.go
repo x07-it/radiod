@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os/exec"
 	"context"
 	"net/http"
 	"os"
@@ -22,6 +23,11 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		logrus.WithError(err).Fatal("cannot load config")
+	}
+
+	// Убедиться, что ffmpeg доступен в системе.
+	if _, err := exec.LookPath(cfg.FFMpegPath); err != nil {
+		logrus.WithError(err).Fatal("ffmpeg not found")
 	}
 
 	// Pre-convert audio files and gather track list per station.
