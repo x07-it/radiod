@@ -3,7 +3,6 @@ package server
 import (
 	"html/template"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -14,14 +13,11 @@ import (
 
 // SetupRouter creates and configures Gin router with all endpoints.
 func SetupRouter(p *stream.Player) *gin.Engine {
-	// Загружаем шаблон главной страницы. В случае ошибки используем запасной HTML.
-	tmplBytes, err := os.ReadFile("web/index.gohtml")
-	var indexTemplate string
-	if err != nil {
-		logrus.WithError(err).Warn("fallback to built-in index template")
-		indexTemplate = "<html><body><h1>Stations</h1><ul>{{STATIONS}}</ul></body></html>"
-	} else {
-		indexTemplate = string(tmplBytes)
+	// Шаблон главной страницы хранится в бинарнике.
+	indexHTML := string(indexTemplate)
+	if len(indexHTML) == 0 {
+		logrus.Warn("fallback to built-in index template")
+		indexHTML = "<html><body><h1>Stations</h1><ul>{{STATIONS}}</ul></body></html>"
 	}
 
 	r := gin.Default()
@@ -40,7 +36,7 @@ func SetupRouter(p *stream.Player) *gin.Engine {
 			}
 		}
 		// Вставляем список станций в шаблон.
-		page := strings.Replace(indexTemplate, "{{STATIONS}}", b.String(), 1)
+		page := strings.Replace(indexHTML, "{{STATIONS}}", b.String(), 1)
 		html := gohtml.Format(page)
 		c.Data(200, "text/html; charset=utf-8", []byte(html))
 	})
